@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Texas Hold'em</title>
+<style>
+body {
+    background-color: #1b5e20;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+#table {
+    background-color: #2e7d32;
+    padding: 20px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 0 20px black;
+}
+.player {
+    margin: 20px;
+    color: white;
+}
+.cards {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+.card {
+    width: 50px;
+    height: 70px;
+    border-radius: 5px;
+    background-color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+}
+#community-cards {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px;
+}
+button {
+    background-color: #ffeb3b;
+    border: none;
+    padding: 10px 20px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 10px;
+}
+button:hover {
+    background-color: #fdd835;
+}
+</style>
+</head>
+<body>
+<div id="table">
+    <div id="dealer">Dealer</div>
+    <div id="players">
+        <div class="player" id="player1">
+            <div class="cards"></div>
+            <div class="info">Player 1</div>
+        </div>
+        <div class="player" id="player2">
+            <div class="cards"></div>
+            <div class="info">Player 2 (BOT)</div>
+        </div>
+    </div>
+    <div id="community-cards"></div>
+    <button id="dealBtn">Deal</button>
+</div>
+
+<script>
+const suits = ['♠', '♥', '♦', '♣'];
+const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+let deck = [];
+
+function createDeck() {
+    deck = [];
+    for (let suit of suits) {
+        for (let value of values) {
+            deck.push({ suit, value });
+        }
+    }
+}
+
+function shuffleDeck() {
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+}
+
+function dealCard() {
+    return deck.pop();
+}
+
+function renderCard(card) {
+    let div = document.createElement('div');
+    div.className = 'card';
+    div.textContent = card.value + card.suit;
+    return div;
+}
+
+document.getElementById('dealBtn').addEventListener('click', () => {
+    createDeck();
+    shuffleDeck();
+
+    document.querySelectorAll('.player .cards').forEach(el => el.innerHTML = '');
+    document.getElementById('community-cards').innerHTML = '';
+
+    let player1Cards = [dealCard(), dealCard()];
+    let player2Cards = [dealCard(), dealCard()];
+    let communityCards = [dealCard(), dealCard(), dealCard(), dealCard(), dealCard()];
+
+    player1Cards.forEach(c => document.querySelector('#player1 .cards').appendChild(renderCard(c)));
+    player2Cards.forEach(c => document.querySelector('#player2 .cards').appendChild(renderCard(c)));
+
+    communityCards.forEach(c => document.getElementById('community-cards').appendChild(renderCard(c)));
+});
+</script>
+</body>
+</html>
