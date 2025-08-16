@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Texas Hold'em Animato</title>
+<style>
+  body {
+    margin: 0;
+    background: radial-gradient(circle, #111, #000);
+    font-family: Arial, sans-serif;
+    color: white;
+    overflow: hidden;
+  }
+  .table {
+    position: relative;
+    width: 90%;
+    height: 70vh;
+    margin: 20px auto;
+    background: #0a4;
+    border: 5px solid #333;
+    border-radius: 50%;
+    box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  }
+  .player {
+    position: absolute;
+    text-align: center;
+    transition: transform 0.5s;
+  }
+  .player-cards {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 5px;
+  }
+  .card {
+    width: 50px;
+    height: 70px;
+    background: white;
+    color: black;
+    border-radius: 8px;
+    border: 1px solid #000;
+    margin: 0 2px;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+  }
+  .stack {
+    font-size: 14px;
+    margin: 3px 0;
+  }
+  .bet {
+    font-size: 12px;
+    color: #ff0;
+  }
+  .actions {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+    align-items: center;
+  }
+  button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 6px;
+    background: #222;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    margin: 3px 0;
+  }
+  button:hover {
+    background: #555;
+  }
+  .chips {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+  }
+  .chip {
+    background: crimson;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .chip:hover {
+    background: gold;
+    color: black;
+  }
+  #log {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 250px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.6);
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  .pot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 18px;
+    color: gold;
+  }
+  .flying-chip {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: crimson;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    pointer-events: none;
+    transition: all 0.7s ease;
+  }
+</style>
+</head>
+<body>
+<div class="table">
+  <div class="player" id="me" style="bottom: -80px; left: 50%; transform: translateX(-50%);">
+    <div class="player-cards">
+      <div class="card" id="card1">K♠</div>
+      <div class="card" id="card2">Q♠</div>
+    </div>
+    <div class="stack">Stack: <span id="myStack">1500</span></div>
+    <div class="bet">Hai puntato: <span id="myBet">0</span></div>
+  </div>
+
+  <!-- Bot -->
+  <div class="player" id="bot1" style="top: -60px; left: 20%;">
+    <div class="stack">Stack: <span id="bot1Stack">1500</span></div>
+    <div class="bet">Puntata: <span id="bot1Bet">0</span></div>
+  </div>
+  <div class="player" id="bot2" style="top: -60px; right: 20%;">
+    <div class="stack">Stack: <span id="bot2Stack">1500</span></div>
+    <div class="bet">Puntata: <span id="bot2Bet">0</span></div>
+  </div>
+
+  <div class="actions">
+    <button onclick="fold()">Passa</button>
+    <button onclick="checkCall()">Check/Chiama</button>
+    <div>
+      <button onclick="bet()">Punta</button>
+      <div class="chips">
+        <div class="chip" onclick="setBet(5)">5</div>
+        <div class="chip" onclick="setBet(10)">10</div>
+        <div class="chip" onclick="setBet(25)">25</div>
+        <div class="chip" onclick="setBet(50)">50</div>
+        <div class="chip" onclick="setBet(100)">100</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="log"></div>
+  <div class="pot" id="pot">Pot: 0</div>
+</div>
+
+<script>
+let myStack = 1500, myBet = 0, currentBet = 0, pendingBet = 0;
+let bot1Stack = 1500, bot1Bet = 0;
+let bot2Stack = 1500, bot2Bet = 0;
+let pot = 0;
+
+function updateUI() {
+  document.getElementById("myStack").textContent = myStack;
+  document.getElementById("myBet").textContent = myBet;
+  document.getElementById("bot1Stack").textContent = bot1Stack;
+  document.getElementById("bot1Bet").textContent = bot1Bet;
+  document.getElementById("bot2Stack").textContent = bot2Stack;
+  document.getElementById("bot2Bet").textContent = bot2Bet;
+  document.getElementById("pot").textContent = "Pot: " + pot;
+}
+
+function logMessage(message) {
+  const logDiv = document.getElementById("log");
+  const newMsg = document.createElement("div");
+  newMsg.textContent = message;
+  logDiv.appendChild(newMsg);
+  logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+function flyChip(amount, fromX, fromY) {
+  const chip = document.createElement("div");
+  chip.className = "flying-chip";
+  chip.textContent = amount;
+  chip.style.left = fromX + "px";
+  chip.style.top = fromY + "px";
+  document.body.appendChild(chip);
+  const centerX = window.innerWidth/2 - 15;
+  const centerY = window.innerHeight/2 - 15;
+  setTimeout(() => { chip.style.left = centerX + "px"; chip.style.top = centerY + "px"; }, 50);
+  setTimeout(() => { chip.remove(); }, 800);
+}
+
+function fold() {
+  myBet = 0;
+  updateUI();
+  logMessage("Hai passato");
+}
+
+function checkCall() {
+  let diff = currentBet - myBet;
+  if (diff <= 0) {
+    logMessage("Hai fatto Check");
+  } else if (myStack >= diff) {
+    myStack -= diff;
+    myBet += diff;
+    pot += diff;
+    flyChip(diff, window.innerWidth/2, window.innerHeight - 100);
+    logMessage("Hai chiamato " + diff);
+  } else {
+    logMessage("Stack insufficiente per chiamare!");
+  }
+  updateUI();
+}
+
+function setBet(amount) {
+  pendingBet = amount;
+  logMessage("Hai selezionato puntata: " + amount);
+}
+
+function bet() {
+  if (pendingBet <= 0) { logMessage("Seleziona prima una chip"); return; }
+  if (myStack >= pendingBet) {
+    myStack -= pendingBet;
+    myBet += pendingBet;
+    pot += pendingBet;
+    currentBet = Math.max(currentBet, myBet);
+    flyChip(pendingBet, window.innerWidth/2, window.innerHeight - 100);
+    logMessage("Hai puntato " + pendingBet);
+  } else {
+    logMessage("Stack insufficiente!");
+  }
+  pendingBet = 0;
+  updateUI();
+  botTurn();
+}
+
+function botTurn() {
+  let bot1Move = Math.min(10 + Math.floor(Math.random()*50), bot1Stack);
+  bot1Stack -= bot1Move;
+  bot1Bet += bot1Move;
+  pot += bot1Move;
+  flyChip(bot1Move, 100, 50);
+  logMessage("Bot1 punta " + bot1Move);
+
+  let bot2Move = Math.min(10 + Math.floor(Math.random()*50), bot2Stack);
+  bot2Stack -= bot2Move;
+  bot2Bet += bot2Move;
+  pot += bot2Move;
+  flyChip(bot2Move, window.innerWidth-100, 50);
+  logMessage("Bot2 punta " + bot2Move);
+
+  currentBet = Math.max(myBet, bot1Bet, bot2Bet);
+  updateUI();
+}
+
+updateUI();
+</script>
+</body>
+</html>
